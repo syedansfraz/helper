@@ -1,0 +1,43 @@
+std::map<abc, int> rowMapCol0;  // row for keys in column 0
+std::map<abc, int> rowMapCol1;  // row for keys in column 1
+////////////
+int row0 = 0;  // row counter for column 0
+int row1 = 0;  // row counter for column 1
+
+for (auto &it : attribMap)
+{
+    abc key = it.first;
+    const A &data = it.second;
+
+    if (/* condition for column 0 */) {
+        model->setItem(row0, 0, new QStandardItem(data.attribute));
+        rowMapCol0[key] = row0;   // store row for this key
+        row0++;
+    }
+    else {
+        model->setItem(row1, 1, new QStandardItem(data.attribute));
+        rowMapCol1[key] = row1;   // store row for this key
+        row1++;
+    }
+}
+////////////
+void MyClass::updateUI(abc key, const A &data)
+{
+    int row, column;
+
+    if (rowMapCol0.find(key) != rowMapCol0.end()) {
+        row = rowMapCol0[key];
+        column = 0;
+    }
+    else if (rowMapCol1.find(key) != rowMapCol1.end()) {
+        row = rowMapCol1[key];
+        column = 1;
+    }
+    else {
+        return; // key not found
+    }
+
+    model->setItem(row, column, new QStandardItem(data.attribute));
+    attribMap[key] = data;
+}
+s
