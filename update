@@ -1,14 +1,32 @@
-void UpdateRow(int row)
+
+void addData(const QVector<QString>& data)
 {
-    if (row >= ui->table->rowCount())
-        ui->table->insertRow(row);
+    if (rowCounter >= 8)
+        return;   // table full (or overwrite logic later)
 
-    // Column 0 → ID
-    QTableWidgetItem* item0 = new QTableWidgetItem("1001");
-    item0->setTextAlignment(Qt::AlignCenter);
-    ui->table->setItem(row, 0, item0);
+    for (int c = 0; c < 11; ++c) {
+        table->item(rowCounter, c)->setText(data[c]);
+    }
 
-    // Column 1
-    QTableWidgetItem* item1 = new QTableWidgetItem("Alice");
-    item1->setTextAlignment(Qt::AlignCenter);
-    ui->table->setItem(row, 1, item1);s
+    rowCounter++;
+}
+void deleteRow(int row)
+{
+    if (row < 0 || row >= rowCounter)
+        return;
+
+    // 1. Remove the row (rows below shift UP automatically)
+    table->removeRow(row);
+
+    // 2. Add a new empty row at the end
+    table->insertRow(table->rowCount());   // appends at bottom
+
+    // 3. Create empty items for the new last row
+    int lastRow = table->rowCount() - 1;
+    for (int c = 0; c < 11; ++c) {
+        table->setItem(lastRow, c, new QTableWidgetItem(""));
+    }
+
+    // 4. Update counter
+    rowCounter--;
+}
