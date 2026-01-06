@@ -1,32 +1,152 @@
+// GraphCell.h
+#pragma once
 
-void addData(const QVector<QString>& data)
-{
-    if (rowCounter >= 8)
-        return;   // table full (or overwrite logic later)
+class GraphCell {
+public:
+    // Draw a single cell at (rowIndex, side)
+    void draw(int rowIndex, int side);
+};
+cpp
+Copy code
+// GraphCell.cpp
+#include "GraphCell.h"
+#include <GL/gl.h>
 
-    for (int c = 0; c < 11; ++c) {
-        table->item(rowCounter, c)->setText(data[c]);
-    }
+static constexpr int ROW_COUNT = 8;
+static constexpr int COL_COUNT = 2;
 
-    rowCounter++;
+void GraphCell::draw(int row, int side) {
+    if (row < 0 || row >= ROW_COUNT) return;
+    if (side != 1 && side != 2) return;
+
+    float tableWidth  = 1.0f;
+    float tableHeight = 1.0f;
+
+    float cellWidth  = tableWidth / COL_COUNT;
+    float cellHeight = tableHeight / ROW_COUNT;
+
+    float x0 = (side == 1) ? 0.0f : cellWidth;
+    float x1 = x0 + cellWidth;
+
+    float y0 = row * cellHeight;
+    float y1 = y0 + cellHeight;
+    float yMid = (y0 + y1) * 0.5f;
+
+    // Draw middle line
+    glBegin(GL_LINES);
+        glVertex2f(x0, yMid);
+        glVertex2f(x1, yMid);
+    glEnd();
 }
-void deleteRow(int row)
-{
-    if (row < 0 || row >= rowCounter)
-        return;
+2️⃣ Upper Class — Row owner of 2 cells
+cpp
+Copy code
+// CellGroup.h
+#pragma once
+#include "GraphCell.h"
 
-    // 1. Remove the row (rows below shift UP automatically)
-    table->removeRow(row);
+class CellGroup {
+public:
+    void drawCell(int rowIndex, int side);
 
-    // 2. Add a new empty row at the end
-    table->insertRow(table->rowCount());   // appends at bottom
+private:
+    GraphCell leftCell;
+    GraphCell rightCell;
+};
+cpp
+Copy code
+// CellGroup.cpp
+#include "CellGroup.h"
 
-    // 3. Create empty items for the new last row
-    int lastRow = table->rowCount() - 1;
-    for (int c = 0; c < 11; ++c) {
-        table->setItem(lastRow, c, new QTableWidgetItem(""));
+void CellGroup::drawCell(int row, int side) {
+    if (side == 1)
+        leftCell.draw(row, 1);
+    else if (side == 2)
+        rightCell.draw(row, 2);
+}
+3️⃣ GraphInfoRenderer — map of rows
+cpp
+Copy code
+// GraphInfoRenderer.h
+#pragma once
+#include <unordered_map>
+#include "CellGroup.h"
+
+class GraphInfoRenderer {
+public:
+    GraphInfoRenderer();
+    void drawCell(int rowIndex, int side);
+
+private:
+    std::unordered_map<int, CellGroup> mapGraph;
+};
+cpp
+Copy code
+// GraphInfoRenderer.cpp
+// GraphInfoRenderer.cpp
+#include "GraphInfoRenderer.h"
+#include <GL/gl.h>  // For OpenGL drawing
+
+static constexpr int ROW_COUNT = 8;
+
+GraphInfoRenderer::GraphInfoRenderer() {
+    // Initialize 8 rows
+    for (int i = 0; i < ROW_COUNT; ++i) {
+        mapGraph.emplace(i, CellGroup{});
     }
+}
 
-    // 4. Update counter
-    rowCounter--;
+// Draw a specific cell by routing through the row object
+void GraphInfoRenderer::drawCell(int row, int side) {
+    auto it = mapGraph.find(row);
+    if (it != mapGraph.end()) {
+        it->second.drawCell(row, side);
+    }
+}
+
+// paintGL: clears screen and draws only the requested cell
+void GraphInfoRenderer::paintGL(int rowIndex, int side) {
+    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
+
+    // Draw only the cell requested
+    drawCell(rowIndex, side);
+
+    // Optional: add multiple cells by calling drawCell multiple times
+    // e.g. drawCell(0, 1); drawCell(3, 2); drawCell(7, 1);
+}
+///////////////////////////////////////////////////////////////
+if you want to store per cell data then add this 
+class GraphCell {
+public:
+    void setData(float value);  // or string / struct
+    void draw(int rowIndex, int side);
+
+private:
+    float data = 0.0f;   // stores per-cell value
+};
+Add setData in CellGroup to route to left/right cell:
+
+cpp
+Copy code
+class CellGroup {
+public:
+    void setCellData(int side, float value);
+
+private:
+    GraphCell leftCell;
+    GraphCell rightCell;
+};
+
+void CellGroup::setCellData(int side, float value) {
+    if (side == 1) leftCell.setData(value);
+    else if (side == 2) rightCell.setData(value);
+}
+Add setCellData in GraphInfoRenderer:
+
+cpp
+Copy code
+void GraphInfoRenderer::setCellData(int row, int side, float value) {
+    auto it = mapGraph.find(row);
+    if (it != mapGraph.end())
+        it->second.setCellData(side, value);
 }
